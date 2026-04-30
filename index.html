@@ -156,7 +156,6 @@
     .legend-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:.88rem;font-weight:900}
     .swatch{width:14px;height:14px;border-radius:50%}
     .evidence-fragment{border-radius:9px;padding:1px 3px;transition:.16s ease;cursor:pointer}
-    .evidence-fragment:hover{background:rgba(20,125,138,.08);box-shadow:0 0 0 2px rgba(20,125,138,.06)}
     .evidence-fragment.selected{animation:highlightPop .28s ease}
     @keyframes highlightPop{50%{transform:scale(1.02)}}
     .cat-demographics{background:var(--blueSoft);outline:1px solid #bfd0ff}
@@ -209,10 +208,62 @@
     .packet.move{animation:packetMove 2.2s ease-in-out forwards}
     @keyframes packetMove{0%{left:18px}45%{left:45%}75%{left:72%}100%{left:calc(100% - 64px)}}
 
+
+    /* Evidence page: make ordinary note text feel selectable/clickable so cursor does not give away the answers */
+    .soap-note, .soap-note p, .soap-note h4, .soap-note strong, .soap-note span,
+    .patient-grid, .patient-grid div, .patient-grid span {
+      cursor:pointer;
+    }
+    .soap-note .evidence-fragment, .patient-grid .evidence-fragment{
+      cursor:pointer;
+    }
+
+
+    /* Do NOT reveal correct evidence before click: hover only changes the cursor, not color/background/border */
+    .evidence-fragment:hover,
+    .patient-grid .evidence-fragment:hover,
+    .soap-note .evidence-fragment:hover{
+      background:transparent!important;
+      box-shadow:none!important;
+      outline:none!important;
+      color:inherit!important;
+      text-decoration:none!important;
+      cursor:pointer!important;
+    }
+    .evidence-fragment:not(.selected){
+      background:transparent!important;
+      box-shadow:none!important;
+      outline:none!important;
+      color:inherit!important;
+      text-decoration:none!important;
+    }
+    .evidence-fragment.selected.cat-demographics{background:var(--blueSoft)!important;outline:1px solid #bfd0ff!important}
+    .evidence-fragment.selected.cat-insurance{background:var(--purpleSoft)!important;outline:1px solid #d8c0ff!important}
+    .evidence-fragment.selected.cat-setting{background:var(--goldSoft)!important;outline:1px solid #ecd587!important}
+    .evidence-fragment.selected.cat-diagnosis{background:#ffe8e8!important;outline:1px solid #f5bbbb!important}
+    .evidence-fragment.selected.cat-order{background:#dcf7e5!important;outline:1px solid #aee1be!important}
+    .evidence-fragment.selected.cat-medical{background:#ffeccc!important;outline:1px solid #edc580!important}
+
     @media(max-width:1120px){.evidence-layout,.cms-layout,.terms-wrap{grid-template-columns:1fr}.checklist-card{position:static}}
     @media(max-width:920px){.choice-grid,.patient-grid,.form-grid,.money-strip,.status-grid,.outcome-summary,.teaching-grid{grid-template-columns:1fr}.form-row-mini{grid-template-columns:1fr}}
     @media(max-width:700px){.page-title{font-size:1.8rem}.brand h1{font-size:1.45rem}.stepper{top:80px}.hero-card,.question-card,.panel,.quiz-card,.case-card,.insurance-card,.charge-card,.money-card{padding:20px}.form-inner{padding:16px}.note-header h3{font-size:1.1rem}}
-  </style>
+  
+    .soap-note, .soap-note *, .patient-grid, .patient-grid *{
+      cursor:pointer;
+    }
+
+
+    input[type="date"]{
+      cursor:pointer;
+      position:relative;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator{
+      cursor:pointer;
+      transform:scale(1.25);
+      opacity:.85;
+    }
+
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -320,7 +371,7 @@
             <div><span class="meta-label">Patient Name:</span><span class="evidence-fragment" data-id="ev1" data-category="Patient Demographics">Maria Santos</span></div>
             <div><span class="meta-label">Date of Birth:</span><span class="evidence-fragment" data-id="ev2" data-category="Patient Demographics">DOB 03/15/1985</span></div>
             <div><span class="meta-label">MRN:</span> MRN-2847561</div>
-            <div><span class="meta-label">Date of Service:</span> 03/10/2025</div>
+            <div><span class="meta-label">Date of Service:</span> 03/10/2026</div>
             <div><span class="meta-label">Provider:</span> Dr. Elena Reyes, MD</div>
             <div><span class="meta-label">Encounter Type:</span> Established Patient Office Visit</div>
             <div><span class="meta-label">Location:</span> <span class="evidence-fragment" data-id="ev4" data-category="Setting/POS">provider office</span></div>
@@ -344,7 +395,7 @@
             <div class="soap-section"><h4>Plan</h4>
               <p>1. Imaging: Order a <span class="evidence-fragment" data-id="ev8" data-category="Procedure/order clue">portable chest X-ray to be completed at an outpatient radiology facility</span> to confirm infiltrate and assess extent of involvement.</p>
               <p>2. Antibiotic therapy: Initiate <span class="evidence-fragment" data-id="ev9" data-category="Procedure/order clue">azithromycin 500 mg orally on day one, followed by 250 mg once daily for four additional days</span> for treatment of community-acquired pneumonia.</p>
-              <p>Electronically signed: Dr. Elena Reyes, MD — NPI 1234567890 — 03/10/2025 at 11:42 AM</p>
+              <p>Electronically signed: Dr. Elena Reyes, MD — NPI 1234567890 — 03/10/2026 at 11:42 AM</p>
             </div>
           </div>
         </div>
@@ -359,7 +410,7 @@
       <div class="teaching-grid" id="evidenceTeaching"></div>
       <div class="table-wrap" id="extraInfoTableWrap" style="display:none">
         <table><thead><tr><th>Text in note</th><th>Why it matters</th><th>Should it count in this activity?</th></tr></thead><tbody>
-          <tr><td>Date of Service: 03/10/2025</td><td>Needed on the CMS-1500 claim.</td><td>No — not listed in this evidence checklist.</td></tr>
+          <tr><td>Date of Service: 03/10/2026</td><td>Needed on the CMS-1500 claim.</td><td>No — not listed in this evidence checklist.</td></tr>
           <tr><td>Provider / NPI</td><td>Needed for rendering provider billing fields.</td><td>No — important later on the claim form.</td></tr>
           <tr><td>Encounter Type: Established Patient Office Visit</td><td>Helps support E/M coding.</td><td>No — useful for advanced coding, not this checklist.</td></tr>
           <tr><td>MRN</td><td>Internal chart identifier.</td><td>No — usually not a claim-field answer here.</td></tr>
@@ -371,7 +422,7 @@
     <section class="page" id="page-5">
       <div class="eyebrow">Coding Logic</div>
       <h2 class="page-title">Codes & Claim Logic</h2>
-      <p class="page-lead">These questions are harder on purpose. Students must separate history from the problem addressed today.</p>
+      <p class="page-lead">You must separate history from the problem addressed today.</p>
       <div class="card charge-card">
         <h3 style="margin-top:0">Training charge table for this lab</h3>
         <p class="tiny">The office billed an established patient office visit. The chest X-ray was ordered externally and the medication was prescribed, so those do not appear as billed line items on this provider claim.</p>
@@ -420,13 +471,13 @@
             <div class="instruction-box">Use the SOAP note, insurance card, and charge table. You can submit once all required fields are complete and valid.</div>
             <form id="cmsForm" novalidate>
               <div class="form-grid">
-                <div class="field"><label>2. Patient Name <span>(Last, First)</span></label><input id="patientName" placeholder="Santos, Maria"></div>
+                <div class="field"><label>2. Patient Name <span>(Last, First)</span></label><input id="patientName" placeholder="Last, First"></div>
                 <div class="field"><label>3. Date of Birth</label><input id="dob" placeholder="03/15/1985"></div>
                 <div class="field"><label>1A. Insured ID Number</label><input id="insuredId" placeholder="BCB882461035"></div>
                 <div class="field"><label>21. Diagnosis Code</label><select id="icdCode"><option value="">— Select ICD-10 code —</option><option value="J18.9">J18.9 — Pneumonia, unspecified organism</option><option value="E11.9">E11.9 — Type 2 diabetes without complications</option><option value="Z00.00">Z00.00 — Adult exam without abnormal findings</option><option value="I10">I10 — Essential hypertension</option></select></div>
               </div>
               <div class="form-row-mini">
-                <div class="field"><label>24A. DOS</label><input id="dos" placeholder="03/10/2025"></div>
+                <div class="field"><label>24A. DOS</label><input id="dos" name="dos" type="date" aria-label="Date of Service" /><small class="tiny">Use the calendar picker. Find the DOS in the clinical note.</small></div>
                 <div class="field"><label>24B. POS</label><select id="pos"><option value="">POS</option><option value="11">11 — Office</option><option value="22">22 — Outpatient hospital</option><option value="23">23 — ER</option></select></div>
                 <div class="field"><label>24D. CPT Code</label><select id="cpt"><option value="">CPT code</option><option value="99214">99214 — Established patient office visit</option><option value="71046">71046 — Chest X-ray</option><option value="J0456">J0456 — Azithromycin injection</option></select></div>
                 <div class="field"><label>24F. Charges</label><input id="charges" type="number" step="0.01" placeholder="180.00"></div>
@@ -550,19 +601,47 @@
     $$(".step-btn").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
     $$("[data-go]").forEach(b=>b.onclick=()=>showPage(b.dataset.go));
 
-    const typeText="“Today you are not just filling out forms. You are learning to think like billing analysts. Your job is to investigate evidence, connect the clinical story to codes, and defend whether a claim should be paid, rejected, or denied.”";
+    const typeText = "Today you are not just filling out forms. You are learning to think like billing analysts. Your job is to investigate evidence, connect the clinical story to codes, and defend whether a claim should be paid, rejected, or denied.";
+    let typeTimer = null;
+    let missionTimers = [];
+
+    function clearMissionTimers(){
+      if(typeTimer) clearInterval(typeTimer);
+      typeTimer = null;
+      missionTimers.forEach(t => clearTimeout(t));
+      missionTimers = [];
+    }
+
     function typeWriter(){
-      const el=$("#typewriter"); el.textContent=""; let i=0;
-      const timer=setInterval(()=>{ el.textContent+=typeText[i++]||""; if(i>typeText.length) clearInterval(timer); },14);
+      clearMissionTimers();
+      const el = $("#typewriter");
+      if(!el) return;
+      el.textContent = "";
+      let i = 0;
+      typeTimer = setInterval(() => {
+        el.textContent = "“" + typeText.slice(0, i) + (i < typeText.length ? "▌" : "”");
+        i++;
+        if(i > typeText.length){
+          clearInterval(typeTimer);
+          typeTimer = null;
+          el.textContent = "“" + typeText + "”";
+        }
+      }, 14);
     }
+
     function startMissionAnimation(){
-      $$(".mission-seq").forEach(x=>x.classList.remove("show"));
-      $("#packet").classList.remove("move"); void $("#packet").offsetWidth;
+      clearMissionTimers();
+      $$(".mission-seq").forEach(x => x.classList.remove("show"));
+      $("#packet").classList.remove("move");
+      void $("#packet").offsetWidth;
       typeWriter();
-      $$(".mission-seq").forEach((x,i)=>setTimeout(()=>x.classList.add("show"),180*i));
-      setTimeout(()=>$("#packet").classList.add("move"),800);
+      $$(".mission-seq").forEach((x,i) => {
+        missionTimers.push(setTimeout(() => x.classList.add("show"), 180 * i));
+      });
+      missionTimers.push(setTimeout(() => $("#packet").classList.add("move"), 800));
     }
-    $("#restartMission").onclick=startMissionAnimation; startMissionAnimation();
+    $("#restartMission").onclick = startMissionAnimation;
+    startMissionAnimation();
 
     $$("#warmupChoices .choice-btn").forEach(btn=>btn.onclick=()=>{
       $$("#warmupChoices .choice-btn").forEach(b=>b.classList.remove("correct","incorrect"));
@@ -649,13 +728,13 @@
     $("#codeQuizList").innerHTML=codeQ.map(q=>`<div class="card quiz-card"><h3>${q[1]}</h3><p>${q[2]}</p><div class="small-choices">${q[3].map(o=>`<label class="small-choice"><input type="radio" name="${q[0]}" value="${o[0]}"> ${o[1]}</label>`).join("")}</div><div class="rationale" id="rat-${q[0]}"></div></div>`).join("");
     $("#gradeCodeQuiz").onclick=()=>codeQ.forEach(q=>{const sel=document.querySelector(`input[name="${q[0]}"]:checked`), box=$("#rat-"+q[0]);if(sel&&sel.value===q[4]){box.className="rationale show ok";box.innerHTML="<strong>Correct.</strong> "+q[5];confetti(12)}else{box.className="rationale show no";box.innerHTML="<strong>Not quite.</strong> "+q[5];}});
 
-    $("#fillTrainingAnswers").onclick=()=>{patientName.value="Santos, Maria";dob.value="03/15/1985";insuredId.value="BCB882461035";icdCode.value="J18.9";dos.value="03/10/2025";pos.value="11";cpt.value="99214";charges.value="180.00";npi.value="1234567890";sigOnFile.checked=true;};
+    $("#fillTrainingAnswers").onclick=()=>{patientName.value="Santos, Maria";dob.value="03/15/1985";insuredId.value="BCB882461035";icdCode.value="J18.9";dos.value="2026-03-10";pos.value="11";cpt.value="99214";charges.value="180.00";npi.value="1234567890";sigOnFile.checked=true;};
     function evalClaim(v){
       const front=[], clinical=[];
       if(v.patientName!=="Santos, Maria")front.push("Patient name does not match.");
       if(v.dob!=="03/15/1985")front.push("DOB does not match.");
       if(v.insuredId!=="BCB882461035")front.push("Insured ID does not match.");
-      if(v.dos!=="03/10/2025")front.push("Date of service does not match.");
+      if(v.dos!=="2026-03-10")front.push("Date of service does not match.");
       if(v.pos!=="11")front.push("POS does not match provider office.");
       if(v.npi!=="1234567890")front.push("Rendering NPI does not match.");
       if(!v.sigOnFile)front.push("Signature on file is missing.");
@@ -667,7 +746,7 @@
     $("#submitCms").onclick=()=>{
       const v={patientName:patientName.value.trim(),dob:dob.value.trim(),insuredId:insuredId.value.trim(),icdCode:icdCode.value,dos:dos.value.trim(),pos:pos.value,cpt:cpt.value,charges:charges.value.trim(),npi:npi.value.trim(),sigOnFile:sigOnFile.checked};
       const problems=[];
-      if(!v.patientName)problems.push("Patient name is required."); if(!v.dob)problems.push("DOB is required."); if(!v.insuredId)problems.push("Insured ID is required."); if(!v.icdCode)problems.push("Diagnosis code is required."); if(!v.dos)problems.push("Date of service is required."); if(!v.pos)problems.push("POS is required."); if(!v.cpt)problems.push("CPT is required."); if(v.charges==="")problems.push("Charges are required."); if(!/^\d{10}$/.test(v.npi))problems.push("NPI must be 10 digits."); if(!v.sigOnFile)problems.push("Signature on file must be checked.");
+      if(!v.patientName)problems.push("Patient name is required."); if(!v.dob)problems.push("DOB is required."); if(!v.insuredId)problems.push("Insured ID is required."); if(!v.icdCode)problems.push("Diagnosis code is required."); if(!v.dos)problems.push("Date of service is required. Use the calendar picker in Box 24A."); if(!v.pos)problems.push("POS is required."); if(!v.cpt)problems.push("CPT is required."); if(v.charges==="")problems.push("Charges are required."); if(!/^\d{10}$/.test(v.npi))problems.push("NPI must be 10 digits."); if(!v.sigOnFile)problems.push("Signature on file must be checked.");
       if(problems.length){$("#cmsMessage").className="form-msg show warn";$("#cmsMessage").innerHTML="<strong>Fix these items first:</strong><br>"+problems.join("<br>");state.claimPacket=null;updatePayerStatus();return;}
       state.claimPacket=evalClaim(v);state.hintIndex=0;state.runResult=null;$("#cmsMessage").className="form-msg show good";$("#cmsMessage").innerHTML="<strong>Claim packet created.</strong> Now run the clearinghouse and payer simulation.";confetti(30);updatePayerStatus();
     };
@@ -699,6 +778,130 @@
       clearTimeout(window.__toastTimer);
       window.__toastTimer=setTimeout(()=>t.classList.remove("show"),1300);
     }
+
+
+    function makeMostSoapTextClickable(){
+      const note = document.querySelector(".soap-note");
+      if(!note) return;
+
+      const skipTags = new Set(["SCRIPT","STYLE","BUTTON","INPUT","SELECT","TEXTAREA"]);
+      const walker = document.createTreeWalker(
+        note,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode(node){
+            const text = node.nodeValue;
+            if(!text || !text.trim()) return NodeFilter.FILTER_REJECT;
+            const parent = node.parentElement;
+            if(!parent) return NodeFilter.FILTER_REJECT;
+            if(skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+            if(parent.closest(".evidence-fragment")) return NodeFilter.FILTER_REJECT;
+            if(parent.closest(".decoy-fragment")) return NodeFilter.FILTER_REJECT;
+            if(parent.closest(".auto-decoy-fragment")) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+
+      const nodes = [];
+      while(walker.nextNode()) nodes.push(walker.currentNode);
+
+      nodes.forEach(node => {
+        const text = node.nodeValue;
+        const frag = document.createDocumentFragment();
+
+        // Keep original spacing, but make meaningful phrases clickable.
+        const parts = text.split(/(\s+)/);
+        let buffer = "";
+
+        function flush(){
+          const phrase = buffer.trim();
+          if(!phrase){
+            if(buffer) frag.appendChild(document.createTextNode(buffer));
+            buffer = "";
+            return;
+          }
+
+          // If the buffer is only punctuation, leave it alone.
+          if(!/[A-Za-z0-9]/.test(phrase)){
+            frag.appendChild(document.createTextNode(buffer));
+            buffer = "";
+            return;
+          }
+
+          const leading = buffer.match(/^\s*/)?.[0] || "";
+          const trailing = buffer.match(/\s*$/)?.[0] || "";
+          if(leading) frag.appendChild(document.createTextNode(leading));
+
+          const span = document.createElement("span");
+          span.className = "auto-decoy-fragment";
+          span.textContent = phrase;
+          frag.appendChild(span);
+
+          if(trailing) frag.appendChild(document.createTextNode(trailing));
+          buffer = "";
+        }
+
+        parts.forEach(part => {
+          buffer += part;
+          // Create clickable chunks around punctuation or after longer phrases
+          if(/[.;:]$/.test(part.trim()) || buffer.trim().split(/\s+/).length >= 7){
+            flush();
+          }
+        });
+        flush();
+
+        node.parentNode.replaceChild(frag, node);
+      });
+    }
+
+    makeMostSoapTextClickable();
+
+    document.querySelectorAll(".auto-decoy-fragment").forEach(d=>{
+      d.addEventListener("click",()=>{
+        d.classList.remove("buzz");
+        void d.offsetWidth;
+        d.classList.add("buzz");
+        showToast("Not quite — this detail may be clinically relevant, but it is not one of the required evidence selections for this checklist.");
+      });
+    });
+
+
+
+    // Evidence safety net: any ordinary text click in the note should feel clickable but not count unless it is a real evidence fragment.
+    document.querySelectorAll(".soap-note, .patient-grid").forEach(area=>{
+      area.addEventListener("click",(event)=>{
+        if(event.target.closest(".evidence-fragment")) return;
+        if(event.target.closest(".decoy-fragment") || event.target.closest(".auto-decoy-fragment")) return;
+        const target = event.target.closest("p,h4,div,span,strong") || event.target;
+        if(target){
+          target.classList.remove("buzz");
+          void target.offsetWidth;
+          target.classList.add("buzz");
+        }
+        showToast("Not quite — this detail may be useful background, but it is not one of the required evidence selections for this checklist.");
+      });
+    });
+
+
+
+    // Safety net: if students click any ordinary note text that is not a correct evidence span, show Not quite.
+    document.querySelectorAll(".soap-note, .patient-grid").forEach(area=>{
+      area.addEventListener("click",(event)=>{
+        if(event.target.closest(".evidence-fragment")) return;
+        if(event.target.closest(".decoy-fragment") || event.target.closest(".auto-decoy-fragment")) return;
+        const target = event.target.closest("p,h4,div,span,strong") || event.target;
+        if(target && target.classList){
+          target.classList.remove("buzz");
+          void target.offsetWidth;
+          target.classList.add("buzz");
+        }
+        if(typeof showToast === "function"){
+          showToast("Not quite — this detail may be useful background, but it is not one of the required evidence selections for this checklist.");
+        }
+      });
+    });
+
 
     document.querySelectorAll(".decoy-fragment").forEach(d=>{
       d.addEventListener("click",()=>{
@@ -771,7 +974,7 @@ ANSWER KEY / TEACHING SUMMARY
 • Patient Name: Santos, Maria
 • DOB: 03/15/1985
 • Insured ID: BCB882461035
-• DOS: 03/10/2025
+• DOS: 03/10/2026
 • POS: 11
 • ICD-10-CM: J18.9
 • CPT: 99214
