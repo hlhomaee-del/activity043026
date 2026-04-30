@@ -263,6 +263,11 @@
       opacity:.85;
     }
 
+
+    #toast:not(.show){
+      display:none!important;
+    }
+
 </style>
 </head>
 <body>
@@ -575,7 +580,7 @@
 
   </main>
 
-  <div class="toast" id="toast">Not quite — keep investigating.</div>
+  <div class="toast" id="toast" aria-live="polite"></div>
 
   <script>
     const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
