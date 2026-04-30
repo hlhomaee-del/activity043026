@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Billing Detective Lab — From SOAP Note to Clean Claim</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --surface:#ffffff;
+      --surface2:#f8fafc;
+      --text:#1f2a44;
+      --muted:#64748b;
+      --border:#d9e2ef;
+      --shadow:0 16px 34px rgba(15, 23, 42, 0.10);
+      --teal:#147d8a;
+      --teal2:#22a6b5;
+      --navy:#3447a8;
+      --purple:#8e5ad7;
+      --orange:#d97706;
+      --green:#159947;
+      --red:#cc4b4b;
+      --gold:#c08a08;
+      --blue:#356ae6;
+      --blueSoft:#eaf1ff;
+      --greenSoft:#eaf9ef;
+      --purpleSoft:#f2e8ff;
+      --orangeSoft:#fff3df;
+      --redSoft:#fdecec;
+      --goldSoft:#fff6da;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);scroll-behavior:smooth}
+    body{min-height:100vh;overflow-x:hidden}
+
+    /* Moving background */
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-2;
+      background:
+        radial-gradient(circle at 10% 15%, rgba(34,166,181,.16), transparent 32%),
+        radial-gradient(circle at 90% 10%, rgba(142,90,215,.13), transparent 30%),
+        radial-gradient(circle at 45% 90%, rgba(217,119,6,.10), transparent 34%),
+        linear-gradient(135deg,#f5f7fb,#ffffff);
+      animation:bgDrift 12s ease-in-out infinite alternate;
+    }
+    body::after{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      background-image:linear-gradient(rgba(20,125,138,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(20,125,138,.045) 1px,transparent 1px);
+      background-size:42px 42px;
+      mask-image:linear-gradient(to bottom,rgba(0,0,0,.9),rgba(0,0,0,.15));
+      animation:gridSlide 18s linear infinite;
+    }
+    @keyframes bgDrift{from{filter:hue-rotate(0deg);transform:scale(1)}to{filter:hue-rotate(10deg);transform:scale(1.04)}}
+    @keyframes gridSlide{from{background-position:0 0}to{background-position:42px 84px}}
+
+    .topbar{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:16px 22px;position:sticky;top:0;z-index:50;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+    .topbar-inner{max-width:1380px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:14px}
+    .logo{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--teal),var(--teal2));display:grid;place-items:center;color:#fff;font-size:24px;font-weight:900;box-shadow:0 8px 20px rgba(20,125,138,.28);animation:logoPulse 2.8s ease-in-out infinite}
+    @keyframes logoPulse{0%,100%{transform:translateY(0);box-shadow:0 8px 20px rgba(20,125,138,.28)}50%{transform:translateY(-2px);box-shadow:0 12px 28px rgba(20,125,138,.38)}}
+    .brand h1{margin:0;font-size:1.85rem;line-height:1;color:var(--teal);font-weight:900;letter-spacing:-.03em}
+    .brand .subtitle{margin-top:6px;color:var(--navy);font-size:1rem;font-weight:700}
+    .designer-tag{background:linear-gradient(135deg,#fff,#f4fbfc);border:1px solid #cbe5e9;color:var(--teal);padding:12px 16px;border-radius:16px;font-weight:800;box-shadow:var(--shadow);white-space:nowrap;position:relative;overflow:hidden}
+    .designer-tag::after{content:"";position:absolute;inset:-30%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.8),transparent);transform:translateX(-110%);animation:shine 4s ease-in-out infinite}
+    @keyframes shine{0%,55%{transform:translateX(-110%)}75%,100%{transform:translateX(110%)}}
+
+    .stepper{background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);position:sticky;top:81px;z-index:45}
+    .stepper-inner{max-width:1380px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;overflow:auto}
+    .step-btn{border:1px solid var(--border);background:#fff;color:var(--muted);padding:12px 16px;border-radius:999px;font-size:.98rem;font-weight:800;cursor:pointer;white-space:nowrap;transition:.22s ease;position:relative;overflow:hidden}
+    .step-btn:hover{border-color:#a9c5d5;color:var(--teal);transform:translateY(-1px)}
+    .step-btn.active{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 10px 22px rgba(20,125,138,.24)}
+    .step-btn.active::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);animation:activeSweep 2s linear infinite}
+    @keyframes activeSweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+    main{max-width:1380px;margin:0 auto;padding:28px 18px 90px}
+    .page{display:none;animation:pageEnter .42s cubic-bezier(.2,.8,.2,1)}
+    .page.active{display:block}
+    @keyframes pageEnter{from{opacity:0;transform:translateY(14px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .eyebrow{display:inline-block;padding:7px 12px;background:#eaf7f8;color:var(--teal);border-radius:999px;font-size:.8rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
+    .page-title{margin:0 0 8px;font-size:2.35rem;letter-spacing:-.04em;color:var(--teal);font-weight:950}
+    .page-lead{margin:0;color:var(--muted);font-size:1.16rem;max-width:1000px;line-height:1.6}
+    .card{background:rgba(255,255,255,.94);border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow);position:relative}
+    .hero-card,.question-card,.panel,.quiz-card,.case-card,.insurance-card,.charge-card,.money-card{padding:28px}
+    .card:hover{box-shadow:0 18px 42px rgba(15,23,42,.12)}
+
+    .quote-block{background:#fcfdff;border:1px solid #e6edf6;border-left:6px solid #ef7f45;padding:20px 22px;border-radius:18px;font-size:1.18rem;line-height:1.5;font-weight:800;margin-bottom:20px}
+    .typewriter{min-height:72px}
+    .callout-banner{margin:16px 0 28px;padding:18px 20px;background:#f7f7fd;border-radius:18px;text-align:center;color:var(--teal);font-weight:900;font-size:1.14rem;line-height:1.45}
+    .mission-flow-wrap{display:grid;gap:20px}
+    .flow-row,.outcome-row{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap}
+    .flow-card{min-width:172px;padding:24px 18px;border-radius:24px;text-align:center;font-weight:900;border:2px solid transparent;box-shadow:0 10px 20px rgba(15,23,42,.09);opacity:.12;transform:translateY(18px) scale(.94);transition:.45s cubic-bezier(.2,.85,.25,1.2)}
+    .flow-card.show{opacity:1;transform:translateY(0) scale(1)}
+    .flow-card.show:hover{transform:translateY(-6px) scale(1.02)}
+    .flow-card small{display:block;margin-top:8px;color:var(--muted);font-weight:700;font-size:.78rem}
+    .flow-blue{background:var(--blueSoft);border-color:#bfd0ff;color:var(--blue)}
+    .flow-green{background:#dcf7e5;border-color:#bbeccb;color:var(--green)}
+    .flow-purple{background:#f1e9ff;border-color:#dcc8ff;color:#7d3fd0}
+    .flow-teal{background:#e5f6f8;border-color:#bee5ea;color:var(--teal)}
+    .flow-gold{background:#fff5d8;border-color:#f1df9d;color:var(--gold)}
+    .flow-red{background:#fff1f1;border-color:#efb2b2;color:#b53d3d}
+    .flow-orange{background:#fff4e7;border-color:#f1c98f;color:#a15b00}
+    .arrow{font-size:2rem;color:#97a6be;font-weight:950;opacity:.12;transition:.38s ease;transform:translateY(18px)}
+    .arrow.show{opacity:1;transform:translateY(0);animation:arrowPulse 1.4s ease-in-out infinite}
+    @keyframes arrowPulse{0%,100%{opacity:.7;transform:translateX(0)}50%{opacity:1;transform:translateX(4px)}}
+
+    .mini-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+    .btn{border:none;padding:12px 18px;border-radius:14px;font-weight:900;cursor:pointer;font-size:.98rem;transition:.2s ease}
+    .btn:hover{transform:translateY(-2px)}
+    .btn-primary{background:var(--teal);color:#fff;box-shadow:0 10px 18px rgba(20,125,138,.22)}
+    .btn-secondary{background:#fff;color:var(--teal);border:1px solid #b9d8de}
+    .btn-orange{background:var(--orange);color:#fff;box-shadow:0 10px 18px rgba(217,119,6,.22)}
+
+    .choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+    .question-stem{font-size:1.25rem;line-height:1.45;font-weight:850;margin-bottom:18px}
+    .choice-btn,.small-choice{border:1px solid var(--border);border-radius:16px;padding:16px;background:#fff;font-size:1rem;font-weight:750;color:var(--text);cursor:pointer;transition:.18s ease;text-align:left}
+    .choice-btn:hover,.small-choice:hover{border-color:#b6cfe0;box-shadow:0 8px 18px rgba(15,23,42,.06);transform:translateY(-1px)}
+    .choice-btn.correct,.small-choice.correct{border-color:#82d7a0;background:#eefcf3;color:#0f7c37;box-shadow:0 0 0 4px rgba(21,153,71,.12);animation:correctPop .35s ease}
+    .choice-btn.incorrect,.small-choice.incorrect{border-color:#efb2b2;background:#fff4f4;color:#b53d3d;animation:shake .32s ease}
+    @keyframes correctPop{50%{transform:scale(1.025)}}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+    .feedback,.rationale,.form-msg,.hint-box{margin-top:18px;padding:16px 18px;border-radius:16px;line-height:1.55;font-size:.98rem;display:none}
+    .show{display:block!important}
+    .good,.ok{background:#eefcf3;border:1px solid #bfe7cc;color:#0f7c37}
+    .bad,.no,.warn{background:#fff7e8;border:1px solid #f0cf9a;color:#8d5600}
+
+    .terms-pill-row,.legend{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+    .pill{border-radius:999px;padding:8px 12px;font-weight:900;font-size:.84rem}
+    .pill-blue{background:var(--blueSoft);color:var(--blue)}
+    .pill-green{background:var(--greenSoft);color:var(--green)}
+    .pill-purple{background:var(--purpleSoft);color:#7d3fd0}
+    .pill-gold{background:var(--goldSoft);color:var(--gold)}
+    .terms-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .term-list,.def-list,.small-choices,.case-grid,.quiz-list{display:grid;gap:12px}
+    .term-item,.def-item{border:1px solid var(--border);border-radius:16px;padding:15px 16px;background:#fff;cursor:pointer;transition:.18s ease;font-weight:800;line-height:1.4}
+    .term-item:hover,.def-item:hover{transform:translateY(-2px);border-color:#b9d0e0}
+    .term-item.selected,.def-item.selected{outline:3px solid rgba(53,106,230,.14);border-color:#98b6ff;background:#f5f8ff}
+    .term-item.matched,.def-item.matched{cursor:default;border-color:#bfe7cc;background:#eefcf3;color:#0e7334;animation:correctPop .3s ease}
+    .match-status{margin-top:16px;font-weight:900;color:var(--teal)}
+
+    .evidence-layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(320px,1fr);gap:22px;align-items:start;margin-top:20px}
+    .note-card{padding:0;overflow:hidden}
+    .note-header{padding:18px 24px;background:#fcfdfd;border-bottom:1px solid var(--border)}
+    .note-header h3{margin:0;font-size:1.5rem;color:#5b6f93;letter-spacing:.05em;text-transform:uppercase}
+    .patient-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;padding:24px;border-bottom:1px solid var(--border)}
+    .meta-label{font-weight:950;color:#5b6f93;text-transform:uppercase;letter-spacing:.03em;margin-right:8px}
+    .soap-note{padding:24px;font-size:1rem;line-height:1.88}
+    .soap-section{margin-bottom:22px}
+    .soap-section h4{margin:0 0 10px;font-size:1.33rem;color:#5b6f93;letter-spacing:.06em;text-transform:uppercase}
+    .legend-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:.88rem;font-weight:900}
+    .swatch{width:14px;height:14px;border-radius:50%}
+    .evidence-fragment{border-radius:9px;padding:1px 3px;transition:.16s ease;cursor:pointer}
+    .evidence-fragment:hover{background:rgba(20,125,138,.08);box-shadow:0 0 0 2px rgba(20,125,138,.06)}
+    .evidence-fragment.selected{animation:highlightPop .28s ease}
+    @keyframes highlightPop{50%{transform:scale(1.02)}}
+    .cat-demographics{background:var(--blueSoft);outline:1px solid #bfd0ff}
+    .cat-insurance{background:var(--purpleSoft);outline:1px solid #d8c0ff}
+    .cat-setting{background:var(--goldSoft);outline:1px solid #ecd587}
+    .cat-diagnosis{background:#ffe8e8;outline:1px solid #f5bbbb}
+    .cat-order{background:#dcf7e5;outline:1px solid #aee1be}
+    .cat-medical{background:#ffeccc;outline:1px solid #edc580}
+    .checklist-card{padding:22px;position:sticky;top:156px}
+    .checklist-list{display:grid;gap:12px;margin-top:10px}
+    .check-item{border:1px solid var(--border);border-radius:18px;padding:16px;background:#fff;transition:.2s ease}
+    .check-item.done{border-color:#bfe7cc;background:#f4fcf7}
+    .check-item-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+    .check-item-title{font-weight:900;font-size:1.05rem}
+    .count-badge{min-width:64px;text-align:center;padding:7px 10px;border-radius:999px;font-weight:950;font-size:.92rem;color:#fff;background:#5d6f8d}
+    .count-badge.done{background:var(--green)}
+    .check-hint{color:var(--muted);line-height:1.45;font-size:.94rem}
+    .success-box{margin-top:16px;padding:16px 18px;border-radius:18px;background:#eefcf3;border:1px solid #bfe7cc;color:#0f7c37;font-weight:850;display:none;line-height:1.5}
+    .teaching-grid{display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}
+    .teach-card{padding:18px;border-radius:18px;background:#fff;border:1px solid var(--border)}
+    .teach-card h4{margin:0 0 10px}.teach-card p,.teach-card li{color:var(--muted);line-height:1.55;margin:0;font-size:.96rem}.teach-card ul{margin:10px 0 0 18px;padding:0}
+    .table-wrap{overflow:auto;margin-top:18px;border-radius:18px;border:1px solid var(--border);background:#fff}
+    table{width:100%;border-collapse:collapse;min-width:720px}
+    th,td{border-bottom:1px solid #e8eef5;padding:13px 14px;text-align:left;vertical-align:top;font-size:.96rem;line-height:1.45}
+    th{background:#f7fafc;font-size:.88rem;color:#48627a;text-transform:uppercase;letter-spacing:.04em}
+
+    .cms-layout{display:grid;grid-template-columns:minmax(300px,.95fr) minmax(0,1.55fr);gap:20px;margin-top:20px;align-items:start}
+    .insurance-shell{border-radius:18px;padding:20px;background:linear-gradient(135deg,#eef4ff,#f7fbff);border:1px solid #c9d9f8;box-shadow:0 12px 24px rgba(53,106,230,.08)}
+    .insurance-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:16px}
+    .insurance-brand{font-weight:950;color:var(--blue);font-size:1.16rem}.insurance-type{color:var(--muted);font-size:.9rem;font-weight:800}
+    .insurance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:8px}
+    .insurance-field{background:#fff;border:1px solid #dbe6fb;border-radius:14px;padding:10px 12px}.insurance-field .label{font-size:.75rem;text-transform:uppercase;color:#6a7d9b;font-weight:950;letter-spacing:.04em}.insurance-field .value{margin-top:5px;font-weight:900;color:#22375e;line-height:1.35;word-break:break-word}
+    .training-note{margin-top:14px;padding:14px 16px;border-radius:14px;background:#fff7e8;border:1px solid #efd49a;color:#8a5805;line-height:1.55;font-size:.95rem}
+    .money-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.money-pill{border-radius:16px;padding:14px;border:1px solid var(--border);background:#fff}.money-pill .label{font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;color:#6d8097;font-weight:950}.money-pill .value{font-size:1.35rem;font-weight:950;margin-top:6px}
+    .form-card{overflow:hidden;padding:0}.form-banner{background:#b7302b;color:#fff;padding:18px 22px;display:flex;justify-content:space-between;gap:12px;font-weight:950;font-size:1.06rem;flex-wrap:wrap}.form-inner{padding:20px;background:#fff}.instruction-box{margin-bottom:18px;padding:16px 18px;background:#fff9ec;border:1px solid #eccf84;color:#8d5600;border-radius:16px;line-height:1.5;font-weight:800}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{display:flex;flex-direction:column;gap:8px}.field label{font-weight:950;color:#b7302b;font-size:.9rem;text-transform:uppercase;letter-spacing:.03em}.field label span{color:#8aa0b8;text-transform:none;font-weight:800;margin-left:4px}.field input,.field select{border:1px solid #d8dde6;border-radius:14px;padding:13px 14px;font-size:1.02rem;color:var(--text);background:#fff}.field input:focus,.field select:focus{outline:3px solid rgba(20,125,138,.12);border-color:#8dbec6}.form-row-mini{display:grid;grid-template-columns:1fr 1fr 1.4fr 1fr 1fr;gap:10px;margin-top:16px}
+    .checkbox-row{margin-top:16px;border:1px solid #e5e9ef;border-radius:16px;padding:16px;background:#fcfdff;display:flex;align-items:flex-start;gap:12px}.checkbox-row input{width:22px;height:22px;margin-top:2px}.checkbox-title{font-weight:950;color:#b7302b;margin-bottom:4px}.checkbox-text{color:var(--muted);line-height:1.5}.submit-row{display:flex;justify-content:flex-end;gap:12px;margin-top:20px;flex-wrap:wrap}
+
+    .status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:22px}.status-card{padding:18px;border-radius:18px;border:1px solid var(--border);background:#fff}.status-card h4{margin:0 0 10px;font-size:1.04rem}.status-pill{display:inline-block;padding:7px 12px;border-radius:999px;font-weight:950;font-size:.86rem}.pending{background:#eef2f7;color:#566980}.accepted{background:#eaf9ef;color:#0f7c37}.rejected{background:#fff1f1;color:#b53d3d}.denied{background:#fff4e7;color:#a15b00}.paid{background:#eaf7ff;color:#245fb9}.path-note{margin-top:18px;padding:16px 18px;border-radius:16px;background:#fff;border:1px solid var(--border);line-height:1.55}.outcome-summary{margin-top:16px;display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.summary-box{padding:14px;border-radius:16px;border:1px solid var(--border);background:#fff}.summary-box .label{color:#6e8096;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;font-weight:950}.summary-box .value{margin-top:6px;font-size:1.26rem;font-weight:950}
+    .footer{margin-top:36px;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
+    .tiny{font-size:.94rem;color:var(--muted);line-height:1.55}
+
+    /* Confetti */
+    .confetti{position:fixed;width:10px;height:14px;top:-20px;z-index:9999;pointer-events:none;animation:fall 1.25s linear forwards}
+    @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.2}}
+
+    /* Claim moving packet animation */
+    .packet-track{height:80px;background:#f7fbfc;border:1px solid var(--border);border-radius:18px;margin:18px 0;position:relative;overflow:hidden}
+    .packet{position:absolute;top:18px;left:18px;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--teal2));display:grid;place-items:center;color:white;font-weight:950;box-shadow:0 10px 20px rgba(15,23,42,.2)}
+    .packet.move{animation:packetMove 2.2s ease-in-out forwards}
+    @keyframes packetMove{0%{left:18px}45%{left:45%}75%{left:72%}100%{left:calc(100% - 64px)}}
+
+    @media(max-width:1120px){.evidence-layout,.cms-layout,.terms-wrap{grid-template-columns:1fr}.checklist-card{position:static}}
+    @media(max-width:920px){.choice-grid,.patient-grid,.form-grid,.money-strip,.status-grid,.outcome-summary,.teaching-grid{grid-template-columns:1fr}.form-row-mini{grid-template-columns:1fr}}
+    @media(max-width:700px){.page-title{font-size:1.8rem}.brand h1{font-size:1.45rem}.stepper{top:80px}.hero-card,.question-card,.panel,.quiz-card,.case-card,.insurance-card,.charge-card,.money-card{padding:20px}.form-inner{padding:16px}.note-header h3{font-size:1.1rem}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="logo">⚕</div>
+        <div>
+          <h1>Billing Detective Lab</h1>
+          <div class="subtitle">From SOAP Note to Clean Claim</div>
+        </div>
+      </div>
+      <div class="action-row">
+        <div class="designer-tag">Instructional Designer: Hilary Homaii</div>
+        <button class="print-btn" id="printTopBtn" type="button">Print / Save as PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="stepper">
+    <div class="stepper-inner">
+      <button class="step-btn active" data-page="1">1. Mission</button>
+      <button class="step-btn" data-page="2">2. Warm-Up</button>
+      <button class="step-btn" data-page="3">3. Terms</button>
+      <button class="step-btn" data-page="4">4. Evidence</button>
+      <button class="step-btn" data-page="5">5. Codes</button>
+      <button class="step-btn" data-page="6">6. CMS-1500</button>
+      <button class="step-btn" data-page="7">7. Payer</button>
+      <button class="step-btn" data-page="8">8. Cases</button>
+      <button class="step-btn" data-page="9">9. Reflection</button>
+    </div>
+  </nav>
+
+  <main>
+    <section class="page active" id="page-1">
+      <div class="eyebrow">Mission</div>
+      <h2 class="page-title">Why this lab matters</h2>
+      <p class="page-lead">Students learn to think like billing analysts: investigate evidence, connect the clinical story to codes, complete the claim, and defend whether the claim should be paid, rejected, or denied.</p>
+      <div class="card hero-card">
+        <div class="quote-block typewriter" id="typewriter"></div>
+        <div class="callout-banner">A patient encounter becomes a claim. A claim becomes money — or a rejection. Your job is to prevent the rejection.</div>
+        <div class="mission-flow-wrap">
+          <div class="flow-row">
+            <div class="flow-card flow-blue mission-seq">SOAP Note<small>Clinical encounter documentation</small></div><div class="arrow mission-seq">→</div>
+            <div class="flow-card flow-green mission-seq">Codes & Evidence<small>Diagnosis + support</small></div><div class="arrow mission-seq">→</div>
+            <div class="flow-card flow-purple mission-seq">CMS-1500<small>Professional claim form</small></div><div class="arrow mission-seq">→</div>
+            <div class="flow-card flow-teal mission-seq">Clearinghouse<small>Front-end edits</small></div><div class="arrow mission-seq">→</div>
+            <div class="flow-card flow-gold mission-seq">Insurance / Payer<small>Adjudication</small></div>
+          </div>
+          <div class="packet-track"><div class="packet" id="packet">✉</div></div>
+          <div class="outcome-row">
+            <div class="flow-card flow-green mission-seq">Paid<small>Clean claim approved</small></div>
+            <div class="flow-card flow-orange mission-seq">Denied<small>Payer says support is insufficient</small></div>
+            <div class="flow-card flow-red mission-seq">Rejected<small>Technical / front-end problem</small></div>
+          </div>
+        </div>
+        <div class="mini-actions"><button class="btn btn-primary" id="restartMission">Restart animation</button><button class="btn btn-secondary" data-go="2">Go to Warm-Up</button></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-2">
+      <div class="eyebrow">Warm-Up</div>
+      <h2 class="page-title">The Copay Trap</h2>
+      <p class="page-lead">Analyze the scenario before making a billing assumption. Students often jump to the copay too fast.</p>
+      <div class="card question-card">
+        <div class="question-stem">Patient has a <strong>$30 copay</strong>. Procedure billed amount is <strong>$200</strong>. Insurance allowed amount is <strong>$120</strong>. How much does the patient owe?</div>
+        <div class="choice-grid" id="warmupChoices">
+          <button class="choice-btn" data-value="A"><strong>A</strong> &nbsp; $30</button>
+          <button class="choice-btn" data-value="B"><strong>B</strong> &nbsp; $80</button>
+          <button class="choice-btn" data-value="C"><strong>C</strong> &nbsp; $120</button>
+          <button class="choice-btn" data-value="D"><strong>D</strong> &nbsp; Cannot be determined</button>
+        </div>
+        <div class="feedback" id="warmupFeedback"></div>
+        <div class="mini-actions"><button class="btn btn-secondary" data-go="3">Go to Terms</button></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-3">
+      <div class="eyebrow">Terminology</div>
+      <h2 class="page-title">Insurance Language in Action</h2>
+      <p class="page-lead">Match the billing terms to their applied definitions. Correct matches lock in green with feedback.</p>
+      <div class="terms-pill-row"><div class="pill pill-blue">Select one term</div><div class="pill pill-purple">Then select its definition</div><div class="pill pill-green">Correct matches lock</div><div class="pill pill-gold">Work in any order</div></div>
+      <div class="terms-wrap">
+        <div class="card panel"><h3>Terms</h3><div class="term-list" id="termList"></div></div>
+        <div class="card panel"><h3>Definitions</h3><div class="def-list" id="defList"></div><div class="match-status" id="matchStatus">0 / 10 matched</div><p class="tiny">Tip: “Allowed amount” and “billed amount” are not the same thing.</p></div>
+      </div>
+      <div class="mini-actions"><button class="btn btn-secondary" data-go="4">Go to Evidence</button></div>
+    </section>
+
+    <section class="page" id="page-4">
+      <div class="eyebrow">Data Recognition</div>
+      <h2 class="page-title">Find the Evidence</h2>
+      <p class="page-lead">Click the correct evidence directly in the SOAP note. Hovering does not give away the answer. When selected, the evidence becomes color-coded.</p>
+      <div class="legend">
+        <div class="legend-item"><span class="swatch" style="background:#bfd0ff"></span> Patient Demographics</div>
+        <div class="legend-item"><span class="swatch" style="background:#dcc8ff"></span> Insurance / Copay</div>
+        <div class="legend-item"><span class="swatch" style="background:#ecd587"></span> Setting / POS</div>
+        <div class="legend-item"><span class="swatch" style="background:#f5bbbb"></span> Diagnosis / ICD clue</div>
+        <div class="legend-item"><span class="swatch" style="background:#aee1be"></span> Procedure / order clue</div>
+        <div class="legend-item"><span class="swatch" style="background:#edc580"></span> Medical necessity clue</div>
+      </div>
+      <div class="evidence-layout">
+        <div class="card note-card">
+          <div class="note-header"><h3>Confidential Clinical Encounter Note — Office Visit</h3></div>
+          <div class="patient-grid">
+            <div><span class="meta-label">Patient Name:</span><span class="evidence-fragment" data-id="ev1" data-category="Patient Demographics">Maria Santos</span></div>
+            <div><span class="meta-label">Date of Birth:</span><span class="evidence-fragment" data-id="ev2" data-category="Patient Demographics">DOB 03/15/1985</span></div>
+            <div><span class="meta-label">MRN:</span> MRN-2847561</div>
+            <div><span class="meta-label">Date of Service:</span> 03/10/2025</div>
+            <div><span class="meta-label">Provider:</span> Dr. Elena Reyes, MD</div>
+            <div><span class="meta-label">Encounter Type:</span> Established Patient Office Visit</div>
+            <div><span class="meta-label">Location:</span> <span class="evidence-fragment" data-id="ev4" data-category="Setting/POS">provider office</span></div>
+            <div><span class="meta-label">Insurance:</span> <span class="evidence-fragment" data-id="ev3" data-category="Insurance/Copay">PPO plan through BlueCross, $20 PCP copay, no referral required</span></div>
+          </div>
+          <div class="soap-note">
+            <div class="soap-section"><h4>Subjective</h4>
+              <p>Patient is a 39-year-old female who presents today as an established patient of this practice. She reports she was seen here eleven months ago for a routine annual wellness examination. She is generally in good health and has a history of <strong>type 2 diabetes mellitus</strong>, but it has been stable.</p>
+              <p>The patient presents today with a chief complaint of respiratory illness. She describes <span class="evidence-fragment" data-id="ev5" data-category="Medical necessity clue">productive cough with yellowish sputum, persistent fever reaching as high as 102.4°F at home, generalized fatigue limiting her daily activities, and progressive shortness of breath over the past five days</span>. She denies nausea, vomiting, chest pain, hemoptysis, or recent travel.</p>
+              <p>Review of systems is otherwise negative for rash, joint pain, urinary symptoms, or changes in vision or hearing.</p>
+            </div>
+            <div class="soap-section"><h4>Objective</h4>
+              <p>General: The patient is alert, oriented, and appears mildly ill but is in no acute respiratory distress at rest.</p>
+              <p>Vital Signs: <span class="evidence-fragment" data-id="ev6" data-category="Medical necessity clue">temperature 101.2°F, oxygen saturation of 95% on room air, respiratory rate of 22 breaths per minute, and auscultation revealing crackles over the right lower lobe</span>. Heart rate 92, blood pressure 118/76 mmHg, weight 142 lbs. BMI 24.1.</p>
+              <p><span class="decoy-fragment">HEENT: Oropharynx is mildly erythematous without exudates.</span> <span class="decoy-fragment">Tympanic membranes are clear bilaterally.</span> <span class="decoy-fragment">Nasal mucosa is mildly congested.</span></p>
+              <p><span class="decoy-fragment">Cardiovascular: Regular rate and rhythm.</span> <span class="decoy-fragment">Abdomen: Soft, non-tender, non-distended.</span> <span class="decoy-fragment">Extremities: No peripheral edema.</span></p>
+            </div>
+            <div class="soap-section"><h4>Assessment</h4>
+              <p>Based on the patient’s presenting symptoms, vital sign findings, and physical examination, the clinical impression is <span class="evidence-fragment" data-id="ev7" data-category="Diagnosis/ICD clue">Pneumonia, unspecified organism</span>. The combination is consistent with a lower respiratory tract infection affecting the right lower lobe.</p>
+            </div>
+            <div class="soap-section"><h4>Plan</h4>
+              <p>1. Imaging: Order a <span class="evidence-fragment" data-id="ev8" data-category="Procedure/order clue">portable chest X-ray to be completed at an outpatient radiology facility</span> to confirm infiltrate and assess extent of involvement.</p>
+              <p>2. Antibiotic therapy: Initiate <span class="evidence-fragment" data-id="ev9" data-category="Procedure/order clue">azithromycin 500 mg orally on day one, followed by 250 mg once daily for four additional days</span> for treatment of community-acquired pneumonia.</p>
+              <p>Electronically signed: Dr. Elena Reyes, MD — NPI 1234567890 — 03/10/2025 at 11:42 AM</p>
+            </div>
+          </div>
+        </div>
+        <div class="card checklist-card">
+          <h3>Evidence Checklist</h3>
+          <p class="tiny">Find all items in each category to complete this section.</p>
+          <div class="checklist-list" id="checklistList"></div>
+          <div class="mini-actions"><button class="btn btn-primary" id="checkEvidence">Check Evidence</button><button class="btn btn-secondary" id="resetEvidence">Reset Highlights</button></div>
+          <div class="success-box" id="evidenceSuccess"></div>
+        </div>
+      </div>
+      <div class="teaching-grid" id="evidenceTeaching"></div>
+      <div class="table-wrap" id="extraInfoTableWrap" style="display:none">
+        <table><thead><tr><th>Text in note</th><th>Why it matters</th><th>Should it count in this activity?</th></tr></thead><tbody>
+          <tr><td>Date of Service: 03/10/2025</td><td>Needed on the CMS-1500 claim.</td><td>No — not listed in this evidence checklist.</td></tr>
+          <tr><td>Provider / NPI</td><td>Needed for rendering provider billing fields.</td><td>No — important later on the claim form.</td></tr>
+          <tr><td>Encounter Type: Established Patient Office Visit</td><td>Helps support E/M coding.</td><td>No — useful for advanced coding, not this checklist.</td></tr>
+          <tr><td>MRN</td><td>Internal chart identifier.</td><td>No — usually not a claim-field answer here.</td></tr>
+        </tbody></table>
+      </div>
+      <div class="mini-actions"><button class="btn btn-secondary" data-go="5">Go to Codes</button></div>
+    </section>
+
+    <section class="page" id="page-5">
+      <div class="eyebrow">Coding Logic</div>
+      <h2 class="page-title">Codes & Claim Logic</h2>
+      <p class="page-lead">These questions are harder on purpose. Students must separate history from the problem addressed today.</p>
+      <div class="card charge-card">
+        <h3 style="margin-top:0">Training charge table for this lab</h3>
+        <p class="tiny">The office billed an established patient office visit. The chest X-ray was ordered externally and the medication was prescribed, so those do not appear as billed line items on this provider claim.</p>
+        <div class="table-wrap"><table><thead><tr><th>Service</th><th>Code type</th><th>Code</th><th>Charge</th><th>Why it matters</th></tr></thead><tbody>
+          <tr><td>Established patient office visit</td><td>CPT</td><td>99214</td><td>$180.00</td><td>Training line item used in this CMS-1500 form.</td></tr>
+          <tr><td>Chest X-ray ordered externally</td><td>Order / support</td><td>Not billed on this provider claim</td><td>$0.00</td><td>Supports medical necessity and the plan of care.</td></tr>
+          <tr><td>Azithromycin prescription</td><td>Medication order</td><td>Not billed on this provider claim</td><td>$0.00</td><td>Supports treatment but is not an office-administered billed drug.</td></tr>
+          <tr><td>PCP copay collected</td><td>Patient collection</td><td>N/A</td><td>$20.00</td><td>Collected at visit; does not replace billed charges.</td></tr>
+        </tbody></table></div>
+      </div>
+      <div class="quiz-list" id="codeQuizList"></div>
+      <div class="mini-actions"><button class="btn btn-primary" id="gradeCodeQuiz">Check Answers</button><button class="btn btn-secondary" data-go="6">Go to CMS-1500</button></div>
+    </section>
+
+    <section class="page" id="page-6">
+      <div class="eyebrow">Claim Form</div>
+      <h2 class="page-title">CMS-1500 Field Simulator</h2>
+      <p class="page-lead">Transfer the clinical data from Maria Santos’s note into the billing form. All required fields must be complete and valid.</p>
+      <div class="cms-layout">
+        <div>
+          <div class="card insurance-card">
+            <h3 style="margin-top:0">Patient insurance card</h3>
+            <div class="insurance-shell">
+              <div class="insurance-top"><div><div class="insurance-brand">BlueCross BlueShield</div><div class="insurance-type">Commercial PPO Plan</div></div><div class="pill pill-blue">Training card</div></div>
+              <div class="insurance-grid">
+                <div class="insurance-field"><div class="label">Member</div><div class="value">Maria Santos</div></div>
+                <div class="insurance-field"><div class="label">DOB</div><div class="value">03/15/1985</div></div>
+                <div class="insurance-field"><div class="label">Member ID</div><div class="value">BCB882461035</div></div>
+                <div class="insurance-field"><div class="label">Group #</div><div class="value">GRP-7742</div></div>
+                <div class="insurance-field"><div class="label">Copay</div><div class="value">$20 PCP</div></div>
+                <div class="insurance-field"><div class="label">Referral</div><div class="value">Not required</div></div>
+              </div>
+            </div>
+            <div class="training-note"><strong>Reminder:</strong> The claim carries the full professional billed charge. The copay is a patient collection item.</div>
+          </div>
+          <div class="card money-card" style="margin-top:20px"><h3 style="margin-top:0">Money snapshot</h3><div class="money-strip">
+            <div class="money-pill"><div class="label">Copay collected</div><div class="value">$20.00</div></div>
+            <div class="money-pill"><div class="label">Billed charge</div><div class="value">$180.00</div></div>
+            <div class="money-pill"><div class="label">Allowed amount</div><div class="value">$120.00</div></div>
+            <div class="money-pill"><div class="label">Projected payer portion</div><div class="value">$100.00</div></div>
+          </div></div>
+        </div>
+        <div class="card form-card">
+          <div class="form-banner"><div>APPROVED OMB-0938-1197 FORM CMS-1500</div><div>HEALTH INSURANCE CLAIM FORM</div></div>
+          <div class="form-inner">
+            <div class="instruction-box">Use the SOAP note, insurance card, and charge table. You can submit once all required fields are complete and valid.</div>
+            <form id="cmsForm" novalidate>
+              <div class="form-grid">
+                <div class="field"><label>2. Patient Name <span>(Last, First)</span></label><input id="patientName" placeholder="Santos, Maria"></div>
+                <div class="field"><label>3. Date of Birth</label><input id="dob" placeholder="03/15/1985"></div>
+                <div class="field"><label>1A. Insured ID Number</label><input id="insuredId" placeholder="BCB882461035"></div>
+                <div class="field"><label>21. Diagnosis Code</label><select id="icdCode"><option value="">— Select ICD-10 code —</option><option value="J18.9">J18.9 — Pneumonia, unspecified organism</option><option value="E11.9">E11.9 — Type 2 diabetes without complications</option><option value="Z00.00">Z00.00 — Adult exam without abnormal findings</option><option value="I10">I10 — Essential hypertension</option></select></div>
+              </div>
+              <div class="form-row-mini">
+                <div class="field"><label>24A. DOS</label><input id="dos" placeholder="03/10/2025"></div>
+                <div class="field"><label>24B. POS</label><select id="pos"><option value="">POS</option><option value="11">11 — Office</option><option value="22">22 — Outpatient hospital</option><option value="23">23 — ER</option></select></div>
+                <div class="field"><label>24D. CPT Code</label><select id="cpt"><option value="">CPT code</option><option value="99214">99214 — Established patient office visit</option><option value="71046">71046 — Chest X-ray</option><option value="J0456">J0456 — Azithromycin injection</option></select></div>
+                <div class="field"><label>24F. Charges</label><input id="charges" type="number" step="0.01" placeholder="180.00"></div>
+                <div class="field"><label>24J. Rendering NPI</label><input id="npi" placeholder="1234567890"></div>
+              </div>
+              <div class="checkbox-row"><input type="checkbox" id="sigOnFile"><div><div class="checkbox-title">12. Patient Authorization / Signature on File</div><div class="checkbox-text">Certifies patient authorizes release of information and assignment of benefits to the provider.</div></div></div>
+              <div class="submit-row"><button type="button" class="btn btn-secondary" id="fillTrainingAnswers">Fill training answers</button><button type="button" class="btn btn-primary" id="submitCms">Create claim packet</button></div>
+              <div class="form-msg" id="cmsMessage"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="mini-actions"><button class="btn btn-secondary" data-go="7">Go to Payer</button></div>
+    </section>
+
+    <section class="page" id="page-7">
+      <div class="eyebrow">Adjudication</div>
+      <h2 class="page-title">Claim Pathway: Clearinghouse to Payer</h2>
+      <p class="page-lead">The first response stays general. Students should investigate with hints before receiving the full explanation.</p>
+      <div class="status-grid">
+        <div class="status-card"><h4>Claim Packet</h4><div class="status-pill pending" id="packetStatus">Not created</div></div>
+        <div class="status-card"><h4>Clearinghouse</h4><div class="status-pill pending" id="clearingStatus">Pending</div></div>
+        <div class="status-card"><h4>Payer</h4><div class="status-pill pending" id="payerStatus">Pending</div></div>
+      </div>
+      <div class="card panel" style="margin-top:20px">
+        <h3 style="margin-top:0">Run the claim</h3>
+        <div class="packet-track"><div class="packet" id="payerPacket">✉</div></div>
+        <p class="tiny">Rejected = technical/front-end problem. Denied = payer processed it but documentation/coding/medical necessity does not support payment. Paid = clean claim approved.</p>
+        <div class="mini-actions"><button class="btn btn-primary" id="runClaim">Run first-pass review</button><button class="btn btn-secondary" id="getHint">Get hint</button><button class="btn btn-orange" id="finalExplain">Reveal final explanation</button></div>
+        <div class="path-note" id="payerMessage">No claim has been evaluated yet. Complete the CMS-1500 section, then run the claim here.</div>
+        <div class="hint-box" id="hintBox"></div>
+        <div class="outcome-summary" id="outcomeSummary">
+          <div class="summary-box"><div class="label">Billed charge</div><div class="value">$180.00</div></div>
+          <div class="summary-box"><div class="label">Copay collected</div><div class="value">$20.00</div></div>
+          <div class="summary-box"><div class="label">Allowed amount</div><div class="value">$120.00</div></div>
+          <div class="summary-box"><div class="label">Payer payment</div><div class="value">$100.00</div></div>
+        </div>
+      </div>
+      <div class="mini-actions"><button class="btn btn-secondary" data-go="8">Go to Cases</button></div>
+    </section>
+
+    <section class="page" id="page-8">
+      <div class="eyebrow">Application</div>
+      <h2 class="page-title">Case Challenge</h2>
+      <p class="page-lead">Short applied cases reinforce the same logic: history versus today’s problem, billed services versus orders, and copay versus final responsibility.</p>
+      <div class="case-grid" id="caseGrid"></div>
+      <div class="mini-actions"><button class="btn btn-secondary" data-go="9">Go to Reflection / Print Report</button></div>
+      <div class="footer">Billing Detective Lab — From SOAP Note to Clean Claim<br>Designed for instructional use by <strong>Hilary Homaii</strong></div>
+    </section>
+
+    <section class="page" id="page-9">
+      <div class="eyebrow">Reflection + Print Report</div>
+      <h2 class="page-title">Generate Student Reflection & Learning Report</h2>
+      <p class="page-lead">Students write their own reflection first. Then the website combines their thoughts with a learning report, answer logic, and next steps. They can copy it or print/save the full website as a PDF.</p>
+
+      <div class="reflection-grid">
+        <div class="card panel">
+          <h3 style="margin-top:0">Student reflection</h3>
+          <div class="reflection-field">
+            <label for="studentName">Student name</label>
+            <input id="studentName" placeholder="Type your name">
+          </div>
+          <div class="reflection-field">
+            <label for="studentReflection">My reflection: What did I learn about clean claims, evidence, and medical necessity?</label>
+            <textarea id="studentReflection" placeholder="Write your reflection here before generating the report."></textarea>
+          </div>
+          <div class="reflection-field">
+            <label for="studentChallenge">What do I still need to practice?</label>
+            <textarea id="studentChallenge" placeholder="Example: I need to practice distinguishing diagnosis codes from history, or deciding what goes on the CMS-1500."></textarea>
+          </div>
+          <div class="reflection-field">
+            <label for="studentPlan">My next study action</label>
+            <textarea id="studentPlan" placeholder="Example: I will review medical necessity clues and redo the CMS-1500 fields."></textarea>
+          </div>
+          <div class="mini-actions">
+            <button class="btn btn-primary" type="button" id="generateReflectionBtn">Generate reflection report</button>
+            <button class="btn btn-secondary" type="button" id="copyReportBtn">Copy report</button>
+            <button class="btn btn-orange" type="button" id="printReportBtn">Print / Save as PDF</button>
+          </div>
+          <div class="print-note">To save as PDF: click <strong>Print / Save as PDF</strong>, then choose <strong>Save as PDF</strong> as the printer/destination.</div>
+        </div>
+
+        <div class="card panel">
+          <h3 style="margin-top:0">Generated report</h3>
+          <div class="report-box" id="reflectionReport">Your generated reflection report will appear here.</div>
+        </div>
+      </div>
+
+      <div class="print-only-report" id="printFullReport">
+        <h1>Billing Detective Lab — Student Report</h1>
+        <p><strong>Instructional Designer:</strong> Hilary Homaii</p>
+        <div id="printReportContent"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="toast" id="toast">Not quite — keep investigating.</div>
+
+  <script>
+    const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+    const state={claimPacket:null,hintIndex:0,runResult:null};
+
+    function confetti(n=40){
+      const colors=["#147d8a","#356ae6","#8e5ad7","#d97706","#159947","#cc4b4b","#c08a08"];
+      for(let i=0;i<n;i++){
+        const c=document.createElement("div");
+        c.className="confetti"; c.style.left=Math.random()*100+"vw"; c.style.background=colors[Math.floor(Math.random()*colors.length)];
+        c.style.animationDelay=(Math.random()*0.2)+"s"; c.style.transform=`rotate(${Math.random()*180}deg)`;
+        document.body.appendChild(c); setTimeout(()=>c.remove(),1500);
+      }
+    }
+
+    function showPage(n){
+      $$(".page").forEach(p=>p.classList.remove("active"));
+      $("#page-"+n).classList.add("active");
+      $$(".step-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===String(n)));
+      scrollTo({top:0,behavior:"smooth"});
+      if(String(n)==="1") startMissionAnimation();
+    }
+    $$(".step-btn").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+    $$("[data-go]").forEach(b=>b.onclick=()=>showPage(b.dataset.go));
+
+    const typeText="“Today you are not just filling out forms. You are learning to think like billing analysts. Your job is to investigate evidence, connect the clinical story to codes, and defend whether a claim should be paid, rejected, or denied.”";
+    function typeWriter(){
+      const el=$("#typewriter"); el.textContent=""; let i=0;
+      const timer=setInterval(()=>{ el.textContent+=typeText[i++]||""; if(i>typeText.length) clearInterval(timer); },14);
+    }
+    function startMissionAnimation(){
+      $$(".mission-seq").forEach(x=>x.classList.remove("show"));
+      $("#packet").classList.remove("move"); void $("#packet").offsetWidth;
+      typeWriter();
+      $$(".mission-seq").forEach((x,i)=>setTimeout(()=>x.classList.add("show"),180*i));
+      setTimeout(()=>$("#packet").classList.add("move"),800);
+    }
+    $("#restartMission").onclick=startMissionAnimation; startMissionAnimation();
+
+    $$("#warmupChoices .choice-btn").forEach(btn=>btn.onclick=()=>{
+      $$("#warmupChoices .choice-btn").forEach(b=>b.classList.remove("correct","incorrect"));
+      if(btn.dataset.value==="D"){btn.classList.add("correct");confetti(25);$("#warmupFeedback").className="feedback show good";$("#warmupFeedback").innerHTML="<strong>Correct.</strong> You cannot determine the final patient responsibility from the copay alone. Billed amount, allowed amount, deductible status, coinsurance, and payer adjudication all matter."}
+      else{btn.classList.add("incorrect");$('#warmupChoices .choice-btn[data-value="D"]').classList.add("correct");$("#warmupFeedback").className="feedback show bad";$("#warmupFeedback").innerHTML="<strong>Not quite.</strong> The safest answer is <strong>Cannot be determined</strong>. The copay is only one piece of the patient-responsibility calculation."}
+    });
+
+    const pairs=[
+      ["Premium","Monthly amount paid to keep coverage active."],
+      ["Deductible","Amount the patient pays before the plan begins sharing costs, depending on policy rules."],
+      ["Copay","Fixed amount the patient pays for a covered service under plan rules."],
+      ["Coinsurance","Percentage share the patient owes after deductible and plan rules are applied."],
+      ["Allowed Amount","Contracted amount the insurance recognizes, not necessarily what the provider billed."],
+      ["Billed Amount","Amount the provider charged before payer adjustments."],
+      ["Claim","Request for payment sent to the payer."],
+      ["EOB","Explanation showing what was billed, allowed, paid, adjusted, and owed."],
+      ["Prior Authorization","Approval required before certain services under the plan."],
+      ["Medical Necessity","Clinical reason a service is justified based on symptoms, findings, and documentation."]
+    ];
+    let selectedTerm=null, matched=new Set();
+    const defs=pairs.map((p,i)=>({term:p[0],def:p[1],i})).sort(()=>Math.random()-.5);
+    function renderTerms(){
+      $("#termList").innerHTML=pairs.map((p,i)=>`<div class="term-item ${selectedTerm===i?"selected":""} ${matched.has(i)?"matched":""}" data-term="${i}">${p[0]}</div>`).join("");
+      $("#defList").innerHTML=defs.map(d=>`<div class="def-item ${matched.has(d.i)?"matched":""}" data-def="${d.i}">${d.def}</div>`).join("");
+      $("#matchStatus").innerHTML=matched.size===10?"10 / 10 matched — <strong>Excellent.</strong>":matched.size+" / 10 matched";
+      $$(".term-item").forEach(el=>el.onclick=()=>{const i=+el.dataset.term;if(matched.has(i))return;selectedTerm=i;renderTerms();});
+      $$(".def-item").forEach(el=>el.onclick=()=>{const i=+el.dataset.def;if(selectedTerm===null||matched.has(i))return;if(selectedTerm===i){matched.add(i);confetti(10)}selectedTerm=null;renderTerms();});
+    }
+    renderTerms();
+
+    const rules=[
+      ["Patient Demographics",2,"Find the two identity details that connect the patient record to the claim"],
+      ["Insurance/Copay",1,"Find the coverage/cost-sharing information that affects intake and billing"],
+      ["Setting/POS",1,"Find the detail that tells where the encounter happened"],
+      ["Diagnosis/ICD clue",1,"Find the provider’s final documented assessment for this encounter"],
+      ["Procedure/order clue",2,"Find the documented actions ordered or prescribed in the plan"],
+      ["Medical necessity clue",2,"Find the clinical support showing why the visit and treatment were justified"]
+    ];
+    const classMap={"Patient Demographics":"cat-demographics","Insurance/Copay":"cat-insurance","Setting/POS":"cat-setting","Diagnosis/ICD clue":"cat-diagnosis","Procedure/order clue":"cat-order","Medical necessity clue":"cat-medical"};
+    const defsTeach={
+      "Patient Demographics":["This identifies who the patient is.",["Patient name","Date of birth"]],
+      "Insurance/Copay":["This shows the plan and basic patient cost-sharing facts.",["Plan type","Copay amount","Referral requirement"]],
+      "Setting/POS":["This tells where the service occurred.",["Provider office → POS 11"]],
+      "Diagnosis/ICD clue":["This is the documented condition addressed today.",["Pneumonia, unspecified organism"]],
+      "Procedure/order clue":["These are tests ordered and medications prescribed. They support care but may not all be billed on this provider claim.",["Portable chest X-ray ordered externally","Azithromycin oral prescription"]],
+      "Medical necessity clue":["This justifies why the visit, diagnosis, and care plan make sense clinically.",["Subjective symptoms: cough, fever, fatigue, shortness of breath","Objective findings: temperature, oxygen saturation, respiratory rate, crackles"]]
+    };
+    let selectedEv=new Set();
+    $$(".evidence-fragment").forEach(s=>s.onclick=()=>{
+      const id=s.dataset.id, cat=s.dataset.category;
+      if(selectedEv.has(id)){selectedEv.delete(id);s.classList.remove("selected",classMap[cat]);}
+      else{selectedEv.add(id);s.classList.add("selected",classMap[cat]);}
+      renderChecklist();
+    });
+    function counts(){let c={};rules.forEach(r=>c[r[0]]=0);$$(".evidence-fragment").forEach(s=>{if(selectedEv.has(s.dataset.id))c[s.dataset.category]++});return c}
+    function renderChecklist(){
+      const c=counts();
+      $("#checklistList").innerHTML=rules.map(r=>{
+        const done=c[r[0]]===r[1];
+        return `<div class="check-item ${done?"done":""}"><div class="check-item-top"><div class="check-item-title">${r[0]}</div><div class="count-badge ${done?"done":""}">${c[r[0]]}/${r[1]}</div></div><div class="check-hint">${r[2]}</div></div>`;
+      }).join("");
+    }
+    function renderTeaching(){
+      $("#evidenceTeaching").innerHTML=rules.map(r=>{
+        const d=defsTeach[r[0]];
+        return `<div class="teach-card"><h4>${r[0]}</h4><p>${d[0]}</p><ul>${d[1].map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+      }).join("");
+    }
+    renderChecklist();renderTeaching();
+    $("#checkEvidence").onclick=()=>{
+      const c=counts(), done=rules.every(r=>c[r[0]]===r[1]);
+      $("#evidenceSuccess").className="success-box show";
+      if(done){confetti(45);$("#evidenceSuccess").innerHTML="<strong>Correct.</strong> You found all required evidence items. The teaching cards below explain what belongs in each category.";$("#evidenceTeaching").classList.add("show");$("#extraInfoTableWrap").style.display="block";}
+      else{$("#evidenceSuccess").innerHTML="<strong>Not complete yet.</strong> Keep going. Medical necessity requires two pieces of support, and procedure/order clues require two selections.";$("#evidenceTeaching").classList.remove("show");$("#extraInfoTableWrap").style.display="none";}
+    };
+    $("#resetEvidence").onclick=()=>{selectedEv.clear();$$(".evidence-fragment").forEach(s=>s.className="evidence-fragment");$("#evidenceSuccess").className="success-box";$("#evidenceTeaching").classList.remove("show");$("#extraInfoTableWrap").style.display="none";renderChecklist();};
+
+    const codeQ=[
+      ["cq1","1) What ICD-10-CM code best supports the documented assessment for today’s encounter?","The chart mentions a history of type 2 diabetes, but students must code the condition actually assessed and treated today.",[["E11.9","E11.9 — Type 2 diabetes mellitus without complications"],["J18.9","J18.9 — Pneumonia, unspecified organism"],["Z00.00","Z00.00 — General adult exam without abnormal findings"],["I10","I10 — Essential hypertension"]],"J18.9","J18.9 is correct. Diabetes is history here, not the problem treated today."],
+      ["cq2","2) Based on the charge table, which service belongs on this provider’s CMS-1500 claim line?","Separate evidence that supports care from services actually billed by this office claim.",[["71046","Portable chest X-ray performed externally"],["J0456","Azithromycin oral prescription as office-administered drug"],["99214","Established patient office visit"],["DME","Home pulse oximeter monitoring equipment"]],"99214","99214 is correct. The external X-ray order and oral prescription support the encounter but are not billed on this provider’s claim line."],
+      ["cq3","3) Which POS code best fits the documented setting?","The note says the service occurred in a provider office.",[["11","11 — Office"],["22","22 — Outpatient hospital"],["23","23 — Emergency room"],["21","21 — Inpatient hospital"]],"11","POS 11 is correct because the documented setting is a provider office."],
+      ["cq4","4) Which statement best captures the medical necessity support for this visit?","Medical necessity is not just the diagnosis name.",[["A","Established patient status alone justifies payment."],["B","The plan type and copay prove medical necessity."],["C","Symptoms plus objective findings support evaluating and treating suspected pneumonia."],["D","Diabetes history automatically supports all respiratory services."]],"C","Correct. Symptoms plus objective findings justify the visit and treatment."]
+    ];
+    $("#codeQuizList").innerHTML=codeQ.map(q=>`<div class="card quiz-card"><h3>${q[1]}</h3><p>${q[2]}</p><div class="small-choices">${q[3].map(o=>`<label class="small-choice"><input type="radio" name="${q[0]}" value="${o[0]}"> ${o[1]}</label>`).join("")}</div><div class="rationale" id="rat-${q[0]}"></div></div>`).join("");
+    $("#gradeCodeQuiz").onclick=()=>codeQ.forEach(q=>{const sel=document.querySelector(`input[name="${q[0]}"]:checked`), box=$("#rat-"+q[0]);if(sel&&sel.value===q[4]){box.className="rationale show ok";box.innerHTML="<strong>Correct.</strong> "+q[5];confetti(12)}else{box.className="rationale show no";box.innerHTML="<strong>Not quite.</strong> "+q[5];}});
+
+    $("#fillTrainingAnswers").onclick=()=>{patientName.value="Santos, Maria";dob.value="03/15/1985";insuredId.value="BCB882461035";icdCode.value="J18.9";dos.value="03/10/2025";pos.value="11";cpt.value="99214";charges.value="180.00";npi.value="1234567890";sigOnFile.checked=true;};
+    function evalClaim(v){
+      const front=[], clinical=[];
+      if(v.patientName!=="Santos, Maria")front.push("Patient name does not match.");
+      if(v.dob!=="03/15/1985")front.push("DOB does not match.");
+      if(v.insuredId!=="BCB882461035")front.push("Insured ID does not match.");
+      if(v.dos!=="03/10/2025")front.push("Date of service does not match.");
+      if(v.pos!=="11")front.push("POS does not match provider office.");
+      if(v.npi!=="1234567890")front.push("Rendering NPI does not match.");
+      if(!v.sigOnFile)front.push("Signature on file is missing.");
+      if(v.icdCode!=="J18.9")clinical.push("Diagnosis code does not match the assessment.");
+      if(v.cpt!=="99214")clinical.push("CPT does not match the training charge table.");
+      if(Number(v.charges).toFixed(2)!=="180.00")clinical.push("Charge does not match the training line item.");
+      return {front,clinical,outcome:front.length?"rejected":clinical.length?"denied":"paid"};
+    }
+    $("#submitCms").onclick=()=>{
+      const v={patientName:patientName.value.trim(),dob:dob.value.trim(),insuredId:insuredId.value.trim(),icdCode:icdCode.value,dos:dos.value.trim(),pos:pos.value,cpt:cpt.value,charges:charges.value.trim(),npi:npi.value.trim(),sigOnFile:sigOnFile.checked};
+      const problems=[];
+      if(!v.patientName)problems.push("Patient name is required."); if(!v.dob)problems.push("DOB is required."); if(!v.insuredId)problems.push("Insured ID is required."); if(!v.icdCode)problems.push("Diagnosis code is required."); if(!v.dos)problems.push("Date of service is required."); if(!v.pos)problems.push("POS is required."); if(!v.cpt)problems.push("CPT is required."); if(v.charges==="")problems.push("Charges are required."); if(!/^\d{10}$/.test(v.npi))problems.push("NPI must be 10 digits."); if(!v.sigOnFile)problems.push("Signature on file must be checked.");
+      if(problems.length){$("#cmsMessage").className="form-msg show warn";$("#cmsMessage").innerHTML="<strong>Fix these items first:</strong><br>"+problems.join("<br>");state.claimPacket=null;updatePayerStatus();return;}
+      state.claimPacket=evalClaim(v);state.hintIndex=0;state.runResult=null;$("#cmsMessage").className="form-msg show good";$("#cmsMessage").innerHTML="<strong>Claim packet created.</strong> Now run the clearinghouse and payer simulation.";confetti(30);updatePayerStatus();
+    };
+    function updatePayerStatus(){if(!state.claimPacket){packetStatus.textContent="Not created";packetStatus.className="status-pill pending";clearingStatus.textContent="Pending";clearingStatus.className="status-pill pending";payerStatus.textContent="Pending";payerStatus.className="status-pill pending";return;}packetStatus.textContent="Created";packetStatus.className="status-pill accepted";clearingStatus.textContent="Pending";clearingStatus.className="status-pill pending";payerStatus.textContent="Pending";payerStatus.className="status-pill pending";}
+    updatePayerStatus();
+    $("#runClaim").onclick=()=>{
+      if(!state.claimPacket){payerMessage.innerHTML="No claim packet exists yet. Complete the CMS-1500 section first.";return;}
+      state.runResult=state.claimPacket;state.hintIndex=0;hintBox.classList.remove("show");outcomeSummary.style.display="none";payerPacket.classList.remove("move");void payerPacket.offsetWidth;payerPacket.classList.add("move");
+      setTimeout(()=>{const r=state.runResult;if(r.outcome==="rejected"){clearingStatus.textContent="Rejected";clearingStatus.className="status-pill rejected";payerStatus.textContent="Not sent";payerStatus.className="status-pill pending";payerMessage.innerHTML="The claim was <strong>not approved on the first pass</strong>. Review claim fields, data transfer, and front-end requirements."}
+      else if(r.outcome==="denied"){clearingStatus.textContent="Accepted";clearingStatus.className="status-pill accepted";payerStatus.textContent="Denied";payerStatus.className="status-pill denied";payerMessage.innerHTML="The payer reviewed the claim and <strong>did not approve payment</strong>. Review documentation support, coding logic, or service relationship."}
+      else{clearingStatus.textContent="Accepted";clearingStatus.className="status-pill accepted";payerStatus.textContent="Paid";payerStatus.className="status-pill paid";payerMessage.innerHTML="The claim cleared front-end edits, reached the payer, and was <strong>approved for payment</strong>.";outcomeSummary.style.display="grid";confetti(60)}},2300);
+    };
+    $("#getHint").onclick=()=>{if(!state.runResult){hintBox.className="hint-box show";hintBox.innerHTML="Run the claim first, then ask for hints.";return;}const r=state.runResult;let hints=r.outcome==="rejected"?["Hint 1: This looks like a front-end claim problem.","Hint 2: Recheck patient data, insured ID, DOS, POS, NPI, and signature on file.","Hint 3: A rejected claim often never reaches full payer adjudication."]:r.outcome==="denied"?["Hint 1: The claim passed the clearinghouse.","Hint 2: Recheck the relationship between diagnosis, CPT, charge, and documentation.","Hint 3: A denied claim is often about documentation support or medical necessity."]:["Hint 1: Patient data transferred correctly.","Hint 2: Coding and POS align with documentation.","Hint 3: The claim is clean."];hintBox.className="hint-box show";hintBox.innerHTML=hints[Math.min(state.hintIndex,hints.length-1)];if(state.hintIndex<hints.length-1)state.hintIndex++;};
+    $("#finalExplain").onclick=()=>{if(!state.runResult){hintBox.className="hint-box show";hintBox.innerHTML="Run the claim first.";return;}const r=state.runResult;hintBox.className="hint-box show";if(r.outcome==="rejected")hintBox.innerHTML="<strong>Final explanation:</strong> Rejected means a technical/front-end issue stopped the claim. Review:<br>"+r.front.map(x=>"• "+x).join("<br>");else if(r.outcome==="denied")hintBox.innerHTML="<strong>Final explanation:</strong> Denied means the payer processed it but coding/support did not justify payment. Review:<br>"+r.clinical.map(x=>"• "+x).join("<br>");else{hintBox.innerHTML="<strong>Final explanation:</strong> Paid. The data matched, the diagnosis supports the visit, the CPT and charge match the training table, and the clean claim pathway worked.";outcomeSummary.style.display="grid";confetti(40)}};
+
+    const cases=[
+      ["case1","Case 1 — History vs. today’s diagnosis","A note lists type 2 diabetes in past medical history, but today’s visit documents cough, fever, tachypnea, crackles, assessment of pneumonia, and antibiotic treatment. Which diagnosis best supports the claim?",[["A","E11.9 — Type 2 diabetes without complications"],["B","J18.9 — Pneumonia, unspecified organism"],["C","Z00.00 — Preventive exam"],["D","I10 — Essential hypertension"]],"B","J18.9 is correct. Code what was evaluated and treated today."],
+      ["case2","Case 2 — Ordered externally vs. billed","The provider ordered a chest X-ray at an outside radiology facility and prescribed azithromycin. For this training provider claim, what should appear as the billed professional service line?",[["A","External chest X-ray technical charge"],["B","Oral azithromycin as in-office drug"],["C","Established patient office visit"],["D","Both X-ray technical charge and oral prescription"]],"C","The office visit is the billed professional service in this lab."],
+      ["case3","Case 3 — Copay reasoning","A student says, “The patient’s copay is $20, so the patient definitely owes exactly $20.” Which answer is best?",[["A","Correct, copay always equals total responsibility."],["B","Correct, billed charge is irrelevant."],["C","Incorrect, final responsibility depends on adjudication and plan rules."],["D","Incorrect, commercial plans never use copays."]],"C","Correct. Copay is only one piece of patient responsibility."]
+    ];
+    $("#caseGrid").innerHTML=cases.map(c=>`<div class="card case-card"><h3>${c[1]}</h3><p>${c[2]}</p><div class="small-choices">${c[3].map(o=>`<label class="small-choice"><input type="radio" name="${c[0]}" value="${o[0]}"> ${o[1]}</label>`).join("")}</div><div class="mini-actions" style="margin-top:14px"><button class="btn btn-primary" data-case="${c[0]}">Check answer</button></div><div class="rationale" id="cr-${c[0]}"></div></div>`).join("");
+    $$("[data-case]").forEach(b=>b.onclick=()=>{const c=cases.find(x=>x[0]===b.dataset.case),sel=document.querySelector(`input[name="${c[0]}"]:checked`),box=$("#cr-"+c[0]);if(sel&&sel.value===c[4]){box.className="rationale show ok";box.innerHTML="<strong>Correct.</strong> "+c[5];confetti(18)}else{box.className="rationale show no";box.innerHTML="<strong>Not quite.</strong> "+c[5];}});
+
+    function showToast(msg){
+      const t=document.getElementById("toast");
+      if(!t) return;
+      t.textContent=msg;
+      t.classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer=setTimeout(()=>t.classList.remove("show"),1300);
+    }
+
+    document.querySelectorAll(".decoy-fragment").forEach(d=>{
+      d.addEventListener("click",()=>{
+        d.classList.remove("buzz");
+        void d.offsetWidth;
+        d.classList.add("buzz");
+        showToast("Not quite — that detail may matter later, but it is not one of the required evidence items for this category.");
+      });
+    });
+
+    function buildLearningReport(){
+      const c=typeof getEvidenceCounts==="function" ? getEvidenceCounts() : {};
+      const evidenceComplete = typeof evidenceRules!=="undefined" ? evidenceRules.every(r=>c[r.key]===r.required) : false;
+      const termsComplete = typeof matchedIndices!=="undefined" ? matchedIndices.size : 0;
+      const claimOutcome = appState && appState.runResult ? appState.runResult.outcome : "not run yet";
+      const name = (document.getElementById("studentName")?.value || "Student").trim();
+      const reflection = (document.getElementById("studentReflection")?.value || "No reflection entered yet.").trim();
+      const challenge = (document.getElementById("studentChallenge")?.value || "No challenge entered yet.").trim();
+      const plan = (document.getElementById("studentPlan")?.value || "No next action entered yet.").trim();
+
+      let work = [];
+      if(termsComplete < 10) work.push("Finish matching the insurance terminology and review billed amount, allowed amount, copay, deductible, and coinsurance.");
+      if(!evidenceComplete) work.push("Practice evidence extraction. A clean claim needs patient identity, coverage, setting/POS, diagnosis, procedure/order details, and medical necessity.");
+      if(!appState.claimPacket) work.push("Complete the CMS-1500 claim packet using the note, insurance card, and charge table.");
+      if(appState.claimPacket && claimOutcome !== "paid") work.push("Review claim fields and coding relationships until the claim pathway reaches a clean paid result.");
+      if(work.length===0) work.push("Continue practicing with new cases so the skill transfers beyond this pneumonia scenario.");
+
+      const report =
+`BILLING DETECTIVE LAB — STUDENT REFLECTION REPORT
+Instructional Designer: Hilary Homaii
+Student: ${name}
+Date generated: ${new Date().toLocaleString()}
+
+STUDENT REFLECTION
+${reflection}
+
+WHAT I STILL NEED TO PRACTICE
+${challenge}
+
+MY NEXT STUDY ACTION
+${plan}
+
+ACTIVITY SNAPSHOT
+Terms matched: ${termsComplete}/10
+Evidence activity complete: ${evidenceComplete ? "Yes" : "No"}
+Claim packet status: ${appState.claimPacket ? "Created" : "Not created"}
+Payer/claim outcome: ${claimOutcome}
+
+WHAT TO WORK ON NEXT
+${work.map(x=>"• "+x).join("\n")}
+
+ANSWER KEY / TEACHING SUMMARY
+1. Warm-Up: The correct answer is “Cannot be determined.” A copay alone does not prove final patient responsibility. The payer must process the claim using allowed amount, deductible, coinsurance, copay, and plan rules.
+
+2. Evidence Categories:
+• Patient demographics: patient identity details such as name and date of birth. Other demographic details can include address, sex, phone number, and subscriber relationship depending on the form, but this activity required name and DOB.
+• Insurance/Copay: plan type, member ID, group number, copay, referral requirement, and effective coverage details.
+• Setting/POS: where the encounter happened. Provider office supports POS 11.
+• Diagnosis/ICD clue: the provider’s documented assessment for today’s encounter.
+• Procedure/order clue: tests, treatments, medications, or services ordered/performed. Not everything ordered is necessarily billed by the same provider.
+• Medical necessity clue: symptoms and objective findings that justify the visit, diagnosis, and treatment plan.
+
+3. Code Logic:
+• J18.9 supports the documented assessment of pneumonia, unspecified organism.
+• E11.9 is a distractor because diabetes is history, not the reason for today’s respiratory visit.
+• Z00.00 is wrong because this is not a normal preventive exam.
+• I10 is wrong because hypertension is not the documented assessment.
+
+4. CMS-1500 Training Answers:
+• Patient Name: Santos, Maria
+• DOB: 03/15/1985
+• Insured ID: BCB882461035
+• DOS: 03/10/2025
+• POS: 11
+• ICD-10-CM: J18.9
+• CPT: 99214
+• Charge: $180.00
+• Rendering NPI: 1234567890
+• Signature on file: checked
+
+5. Claim Outcome Teaching:
+• Rejected means a technical or front-end problem stopped the claim.
+• Denied means the payer processed the claim but refused payment based on support, coding logic, or medical necessity.
+• Paid means the claim passed front-end edits and payer logic.`;
+
+      const reflectionReport=document.getElementById("reflectionReport");
+      const printReportContent=document.getElementById("printReportContent");
+      if(reflectionReport) reflectionReport.textContent = report;
+      if(printReportContent) printReportContent.innerHTML = "<pre style='white-space:pre-wrap;font-family:inherit;line-height:1.45'>" + report.replace(/[&<>]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch])) + "</pre>";
+      return report;
+    }
+
+    document.getElementById("generateReflectionBtn")?.addEventListener("click",()=>{buildLearningReport();confetti(30);showToast("Reflection report generated.");});
+    document.getElementById("copyReportBtn")?.addEventListener("click",async()=>{
+      const report = buildLearningReport();
+      try{ await navigator.clipboard.writeText(report); showToast("Report copied.");}
+      catch(e){ showToast("Copy did not work. Select the report text and copy manually.");}
+    });
+    function printWholeLab(){
+      buildLearningReport();
+      showToast("Choose Save as PDF in the print window.");
+      setTimeout(()=>window.print(),250);
+    }
+    document.getElementById("printTopBtn")?.addEventListener("click", printWholeLab);
+    document.getElementById("printReportBtn")?.addEventListener("click", printWholeLab);
+
+  </script>
+</body>
+</html>
