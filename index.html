@@ -268,6 +268,151 @@
       display:none!important;
     }
 
+    /* =========================================================
+       CMS-1500 VISIBILITY FIX
+       Gives the CMS-1500 form more horizontal space so 24D CPT
+       stays visible, while making the patient/insurance card smaller.
+       ========================================================= */
+    .cms-layout{
+      display:grid;
+      grid-template-columns:minmax(230px,0.55fr) minmax(760px,1.9fr);
+      gap:18px;
+      margin-top:20px;
+      align-items:start;
+    }
+
+    .cms-layout > div:first-child{
+      min-width:0;
+    }
+
+    .cms-layout > .form-card,
+    .cms-layout .form-card{
+      min-width:0;
+      width:100%;
+    }
+
+    .insurance-card,
+    .money-card{
+      padding:16px;
+    }
+
+    .insurance-shell{
+      padding:14px;
+    }
+
+    .insurance-top{
+      margin-bottom:10px;
+    }
+
+    .insurance-brand{
+      font-size:1rem;
+    }
+
+    .insurance-type{
+      font-size:.78rem;
+    }
+
+    .insurance-grid{
+      grid-template-columns:1fr;
+      gap:8px;
+    }
+
+    .insurance-field{
+      padding:8px 10px;
+    }
+
+    .insurance-field .label{
+      font-size:.68rem;
+    }
+
+    .insurance-field .value{
+      font-size:.88rem;
+    }
+
+    .training-note{
+      padding:10px 12px;
+      font-size:.82rem;
+      line-height:1.4;
+    }
+
+    .money-strip{
+      grid-template-columns:1fr;
+      gap:8px;
+    }
+
+    .money-pill{
+      padding:10px 12px;
+    }
+
+    .money-pill .label{
+      font-size:.72rem;
+    }
+
+    .money-pill .value{
+      font-size:1rem;
+    }
+
+    .form-inner{
+      overflow-x:auto;
+    }
+
+    .form-row-mini{
+      display:grid;
+      grid-template-columns:
+        minmax(135px,0.9fr)
+        minmax(110px,0.75fr)
+        minmax(240px,1.5fr)
+        minmax(120px,0.8fr)
+        minmax(150px,1fr);
+      gap:10px;
+      margin-top:16px;
+      align-items:start;
+    }
+
+    #cpt{
+      min-width:230px;
+    }
+
+    .field label{
+      font-size:.78rem;
+      line-height:1.2;
+    }
+
+    .field input,
+    .field select{
+      padding:11px 12px;
+      font-size:.95rem;
+    }
+
+    @media(max-width:1180px){
+      .cms-layout{
+        grid-template-columns:1fr;
+      }
+
+      .insurance-grid{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+
+      .money-strip{
+        grid-template-columns:repeat(4,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:900px){
+      .form-row-mini{
+        min-width:780px;
+      }
+
+      .form-inner{
+        overflow-x:auto;
+      }
+
+      .insurance-grid,
+      .money-strip{
+        grid-template-columns:1fr 1fr;
+      }
+    }
+
 </style>
 </head>
 <body>
